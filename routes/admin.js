@@ -4,12 +4,9 @@ const router = express.Router();
 const InternetPayment = require('../models/Payment');
 const authMiddleware = require('../middleware/authMiddleware');
 const User = require('../models/User');
-<<<<<<< HEAD
-const Balance = require("../models/Balance");
+
 const { route } = require("./saveBalance");
-=======
 const Balance = require('../models/Balance');
->>>>>>> 17260bc3cc984267f725272e6c744c7034873047
 
 router.get('/pending', authMiddleware, async (req, res) => {
   const payments = await InternetPayment.find({
@@ -368,17 +365,17 @@ router.get('/payments/bydate', authMiddleware, async (req, res) => {
 });
 
 
-router.put('/cancel-daen/:id' , async(req,res)=>{
+router.put('/cancel-daen/:id', async (req, res) => {
   console.log("hit cancel daen")
   const id = req.params.id
-  try{
-    const cancelDaen = await Balance.findById({_id : id})
+  try {
+    const cancelDaen = await Balance.findById({ _id: id })
     const user = await User.findOne({ email: cancelDaen.name });
     if (!user) {
       return res.status(404).json({ message: "المستخدم غير موجود" });
     }
-    const Amount = cancelDaen.amount 
-    if(user.balance < Amount){
+    const Amount = cancelDaen.amount
+    if (user.balance < Amount) {
       return res.status(400).json({ message: "الرصيد غير كافي لإلغاء الدين" });
 
     }
@@ -386,11 +383,11 @@ router.put('/cancel-daen/:id' , async(req,res)=>{
     await user.save();
 
 
-    await Balance.findByIdAndDelete({_id : id})
+    await Balance.findByIdAndDelete({ _id: id })
     res.status(201).json("تم الغاء الدين بنجاح")
 
 
-  }catch(err){
+  } catch (err) {
     res.status(401).json(err)
 
   }
