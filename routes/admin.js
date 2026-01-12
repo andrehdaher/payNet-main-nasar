@@ -5,6 +5,7 @@ const InternetPayment = require("../models/Payment");
 const authMiddleware = require("../middleware/authMiddleware");
 const User = require('../models/User');
 const Balance = require("../models/Balance");
+const { route } = require("./saveBalance");
 
 
 router.get("/pending", async (req, res) => {
@@ -402,6 +403,34 @@ router.get("/payments/bydate", async (req, res) => {
   }
 });
 
+
+router.put('/cancel-daen/:id' , async(req,res)=>{
+  console.log("hit cancel daen")
+  const id = req.params.id
+  try{
+    const cancelDaen = await Balance.findById({_id : id})
+    const user = await User.findOne({ email: cancelDaen.name });
+    if (!user) {
+      return res.status(404).json({ message: "المستخدم غير موجود" });
+    }
+    const Amount = cancelDaen.amount 
+    if(user.balance < Amount){
+      return res.status(400).json({ message: "الرصيد غير كافي لإلغاء الدين" });
+
+    }
+    user.balance -= Amount;
+    await user.save();
+
+
+    await Balance.findByIdAndDelete({_id : id})
+    res.status(201).json("تم الغاء الدين بنجاح")
+
+
+  }catch(err){
+    res.status(401).json(err)
+
+  }
+})
 
 
 module.exports = router; // هذا السطر مهم جداً
