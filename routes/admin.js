@@ -184,8 +184,9 @@ router.get('/user/pending', authMiddleware, async (req, res) => {
 // routes/admin.js
 router.post('/reject/:id', async (req, res) => {
   try {
-    const { reason, email, amount } = req.body;
+    const { reason, email } = req.body;
     const paymentId = req.params.id;
+    const payment = await InternetPayment.findById(paymentId);
 
     // 1. تحديث العملية إلى "غير مسددة" مع سبب
     await InternetPayment.findByIdAndUpdate(paymentId, {
@@ -196,7 +197,7 @@ router.post('/reject/:id', async (req, res) => {
     // 2. إرجاع الرصيد للمستخدم
     const user = await User.findOne({ email });
     if (user) {
-      const Amount = amount + amount * 0.05;
+      const Amount = payment.calculatedAmount;
       user.balance += Amount;
       await user.save();
     }
