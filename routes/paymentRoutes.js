@@ -6,26 +6,28 @@ const Payment = require("../models/Payment"); // تأكد أنك استوردت 
 const saveNumber = require("../models/saveNumber"); // تأكد أنك استوردت Payment
 const authMiddleware = require("../middleware/authMiddleware");
 
-router.post("/internet-full", authMiddleware, async (req, res) => {
-  try {
-    console.log("internet-full");
-    const { landline, company, speed, amount, email , paymentType } = req.body;
-    const userId = req.user.id;
 
+router.post('/internet-full', authMiddleware, async (req, res) => {
+  try {
+    const { landline, company, speed, amount, email, paymentType, calculatedAmount, ...extra } = req.body;
+
+    const userId = req.user.id;
     if (!landline || !company || !speed || !amount) {
-      return res.status(400).json({ message: "البيانات غير مكتملة" });
+      return res.status(400).json({ message: 'البيانات غير مكتملة' });
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: "المستخدم غير موجود" });
+      return res.status(404).json({ message: 'المستخدم غير موجود' });
     }
 
-    const amountToDeduct = parseFloat((amount * 1.05).toFixed(2));
-    if (user.balance < amountToDeduct) {
-      return res.status(400).json({ message: "الرصيد غير كافٍ" });
+    const isAdmin = email && email.includes('daheradmin');
+    const amountToDeduct = calculatedAmount;
+    if (!isAdmin) {
+      if (user.balance < amountToDeduct) {
+        return res.status(400).json({ message: 'الرصيد غير كافٍ' });
+      }
     }
-
     // 💡 تحقق من التكرار: هل تم تنفيذ نفس الطلب خلال آخر دقيقة؟
     const recentDuplicate = await Payment.findOne({
       user: userId,
@@ -34,9 +36,8 @@ router.post("/internet-full", authMiddleware, async (req, res) => {
       speed,
       amount,
       email,
-      createdAt: { $gt: new Date(Date.now() - 60 * 1000) }
+      createdAt: { $gt: new Date(Date.now() - 60 * 1000) },
     });
-
 
     // خصم الرصيد
     user.balance -= amountToDeduct;
@@ -51,25 +52,31 @@ router.post("/internet-full", authMiddleware, async (req, res) => {
       amount,
       paymentType,
       email,
-      status: "جاري التسديد",
+      calculatedAmount,
+      status: 'جاري التسديد',
+      extra,
+
+
     });
     await payment.save();
 
-    const io = req.app.get("io");
-if (io) {
-  const pendingPayments = await Payment.find({ status: { $in: ["جاري التسديد", "بدء التسديد"] } });
-  io.emit("pendingPaymentsUpdate", pendingPayments);
-}
+    console.log(payment)
 
+    const io = req.app.get('io');
+    if (io) {
+      const pendingPayments = await Payment.find({
+        status: { $in: ['جاري التسديد', 'بدء التسديد'] },
+      });
+      io.emit('pendingPaymentsUpdate', pendingPayments);
+    }
 
     res.status(200).json({
-      message: "تمت العملية بنجاح",
+      message: 'تمت العملية بنجاح',
       newBalance: user.balance,
     });
-
   } catch (err) {
-    console.error("❌ خطأ أثناء تسديد الإنترنت:", err);
-    res.status(500).json({ message: "حدث خطأ أثناء العملية" });
+    console.error('❌ خطأ أثناء تسديد الإنترنت:', err);
+    res.status(500).json({ message: 'حدث خطأ أثناء العملية' });
   }
 });
 
