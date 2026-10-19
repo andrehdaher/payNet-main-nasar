@@ -1,35 +1,37 @@
-// // addUser.js
-// const mongoose = require("mongoose");
-// const dotenv = require("dotenv");
-// const User = require("./models/User");
+const mongoose = require("mongoose");
+require("dotenv").config();
+const User = require("./models/User");
 
-// // تحميل متغيرات البيئة
-// dotenv.config();
+const {
+  MONGO_URI,
+  SEED_USER_EMAIL,
+  SEED_USER_PASSWORD,
+  SEED_USER_NAME,
+  SEED_USER_NUMBER,
+} = process.env;
 
-// mongoose.connect(process.env.MONGO_URI, {
-//   useNewUrlParser: true,
-//   useUnifiedTopology: true,
-// })
-// .then(async () => {
-//   console.log("🟢 تم الاتصال بقاعدة البيانات");
-// const result = await User.updateMany(
-//   {},
-//   [
-//     {
-//       $set: {
-//         balance: { $divide: ["$balance", 100] }
-//       }
-//     }
-//   ]
-// );
+if (!MONGO_URI || !SEED_USER_EMAIL || !SEED_USER_PASSWORD) {
+  console.error("Set MONGO_URI, SEED_USER_EMAIL, and SEED_USER_PASSWORD before running addUser.js.");
+  process.exit(1);
+}
 
-// console.log("✅ تم التحديث بنجاح");
-// console.log("عدد الحسابات:", result.matchedCount);
-// console.log("عدد الحسابات المعدلة:", result.modifiedCount);
+async function addUser() {
+  try {
+    await mongoose.connect(MONGO_URI);
+    await User.create({
+      email: SEED_USER_EMAIL,
+      password: SEED_USER_PASSWORD,
+      name: SEED_USER_NAME || SEED_USER_EMAIL,
+      number: SEED_USER_NUMBER || "",
+      role: "user",
+    });
+    console.log("User added successfully.");
+  } catch (error) {
+    console.error("Unable to add user:", error);
+    process.exitCode = 1;
+  } finally {
+    await mongoose.disconnect();
+  }
+}
 
-//   process.exit(0);
-// })
-// .catch((err) => {
-//   console.error("❌ خطأ في الاتصال بقاعدة البيانات:", err);
-//   process.exit(1);
-// });
+addUser();
